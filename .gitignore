@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Environment variables & Secrets (CRITICAL)
+.env
+.env.local
+.env.*.local
+.dev.vars
+*.pem
+*.key
+
+# Editor & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Cloudflare Pages / Workers local storage
+.wrangler/
+dist/
+build/

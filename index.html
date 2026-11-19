@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title id="app-title">لوحة إدارة العملاء والتحليلات</title>
+    <link
+        id="app-favicon"
+        rel="icon"
+        type="image/svg+xml"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0%25' stop-color='%232563EB'/%3E%3Cstop offset='100%25' stop-color='%234F46E5'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Cpath d='M9 20l4.5-5 3.5 3.5L23 11' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E"
+    />
+
+    <!-- Google Fonts: IBM Plex Sans Arabic -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap"
+        rel="stylesheet"
+    />
+
+    <!-- Tailwind CSS CDN with Custom Inline RTL/Font Configuration -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"IBM Plex Sans Arabic"', 'system-ui', '-apple-system', 'sans-serif']
+                    }
+                }
+            }
+        };
+    </script>
+
+    <!-- Custom Stylesheet -->
+    <link rel="stylesheet" href="./css/custom.css" />
+
+    <!-- Chart.js v4 & Lucide Icons -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js" defer></script>
+
+    <!-- Conditional Popover API Polyfill for older browsers -->
+    <script type="module">
+        if (!('popover' in HTMLElement.prototype)) {
+            import('https://unpkg.com/@oddbird/popover-polyfill@latest/dist/popover.min.js');
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen antialiased">
+    <!-- ===================================================================== -->
+    <!-- Boot Loader Screen (Prevents Login Flicker During Session Check)      -->
+    <!-- ===================================================================== -->
+    <div
+        id="boot-screen"
+        class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-50 px-4"
+        role="status"
+        aria-live="polite"
+    >
+        <div class="flex flex-col items-center gap-4">
+            <div
+                class="h-12 w-12 rounded-2xl bg-gradient-to-l from-blue-600 to-indigo-600 p-0.5 shadow-md"
+            >
+                <div class="flex h-full w-full items-center justify-center rounded-[14px] bg-white">
+                    <div
+                        class="h-6 w-6 animate-spin rounded-full border-2 border-slate-200 border-t-blue-600"
+                    ></div>
+                </div>
+            </div>
+            <p class="text-sm font-medium text-slate-600">جاري تهيئة مساحة العمل...</p>
+        </div>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- Executive Login View (Closed Registration — Admin Provisioned Only)   -->
+    <!-- ===================================================================== -->
+    <main
+        id="login-view"
+        class="hidden min-h-screen flex-col items-center justify-center bg-slate-50 px-4 py-10"
+    >
+        <div class="w-full max-w-md">
+            <div
+                class="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition-all duration-200 hover:shadow-md"
+            >
+                <!-- Executive Blue/Indigo Gradient Accent Bar -->
+                <div class="h-1.5 w-full bg-gradient-to-l from-blue-600 to-indigo-600"></div>
+
+                <div class="p-7 sm:p-9">
+                    <!-- Brand Header -->
+                    <div class="mb-7 flex flex-col items-center text-center">
+                        <div
+                            id="login-brand-logo"
+                            class="mb-4 flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-l from-blue-600 to-indigo-600 text-white shadow-sm"
+                        >
+                            <i data-lucide="bar-chart-3" class="h-7 w-7" stroke-width="1.75"></i>
+                        </div>
+                        <h1
+                            id="login-brand-name"
+                            class="text-xl font-bold tracking-tight text-slate-900"
+                        >
+                            نموذجي للأعمال
+                        </h1>
+                        <p id="login-brand-subtitle" class="mt-1 text-sm text-slate-500">
+                            لوحة إدارة العملاء والتحليلات
+                        </p>
+                    </div>
+
+                    <!-- Configuration Warning Banner (shown only if config.js is invalid/placeholder) -->
+                    <div
+                        id="config-warning-banner"
+                        class="hidden mb-5 rounded-xl border border-amber-200 bg-amber-50 p-3.5 text-xs leading-relaxed text-amber-800"
+                        role="status"
+                    >
+                        <div class="flex items-start gap-2.5">
+                            <i
+                                data-lucide="alert-triangle"
+                                class="mt-0.5 h-4 w-4 shrink-0 text-amber-600"
+                                stroke-width="1.75"
+                            ></i>
+                            <span id="config-warning-text"></span>
+                        </div>
+                    </div>
+
+                    <!-- Inline Auth Error Alert -->
+                    <div
+                        id="login-error-alert"
+                        class="hidden mb-5 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-xs font-medium leading-relaxed text-rose-700"
+                        role="alert"
+                    >
+                        <div class="flex items-start gap-2.5">
+                            <i
+                                data-lucide="shield-alert"
+                                class="mt-0.5 h-4 w-4 shrink-0 text-rose-600"
+                                stroke-width="1.75"
+                            ></i>
+                            <span id="login-error-text"></span>
+                        </div>
+                    </div>
+
+                    <!-- Semantic Sign-In Form -->
+                    <form id="login-form" class="space-y-4" novalidate>
+                        <div>
+                            <label
+                                for="email"
+                                class="mb-1.5 block text-xs font-semibold text-slate-700"
+                            >
+                                البريد الإلكتروني
+                            </label>
+                            <div class="relative">
+                                <input
+                                    type="email"
+                                    id="email"
+                                    name="email"
+                                    autocomplete="username"
+                                    spellcheck="false"
+                                    enterkeyhint="next"
+                                    dir="ltr"
+                                    required
+                                    placeholder="name@company.com"
+                                    class="w-full rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+                                />
+                            </div>
+                        </div>
+
+                        <div>
+                            <label
+                                for="current-password"
+                                class="mb-1.5 block text-xs font-semibold text-slate-700"
+                            >
+                                كلمة المرور
+                            </label>
+                            <div class="relative">
+                                <input
+                                    type="password"
+                                    id="current-password"
+                                    name="password"
+                                    autocomplete="current-password"
+                                    enterkeyhint="done"
+                                    dir="ltr"
+                                    required
+                                    placeholder="••••••••"
+                                    class="w-full rounded-xl border border-slate-200 bg-slate-50/70 py-2.5 pl-11 pr-4 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10 transition-all"
+                                />
+                                <button
+                                    type="button"
+                                    id="toggle-password-btn"
+                                    aria-pressed="false"
+                                    aria-label="إظهار كلمة المرور"
+                                    class="absolute inset-y-0 left-0 flex items-center px-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                                >
+                                    <i
+                                        id="toggle-password-icon"
+                                        data-lucide="eye"
+                                        class="h-4 w-4"
+                                        stroke-width="1.75"
+                                    ></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            id="login-submit-btn"
+                            class="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-l from-blue-600 to-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-4 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            <span
+                                id="login-spinner"
+                                class="hidden h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white"
+                            ></span>
+                            <span id="login-submit-label">تسجيل الدخول</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <p id="login-footer-text" class="mt-5 text-center text-xs text-slate-400">
+                نظام إدارة العملاء والتحليلات السحابي
+            </p>
+        </div>
+    </main>
+
+    <!-- ===================================================================== -->
+    <!-- Authenticated Executive Dashboard View                                -->
+    <!-- ===================================================================== -->
+    <div id="dashboard-view" class="hidden min-h-screen flex-col">
+        <!-- Sticky Top Navigation Bar -->
+        <header
+            class="no-print sticky top-0 z-30 border-b border-slate-200/80 bg-white/95 backdrop-blur-md"
+        >
+            <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+                <div class="flex min-h-[4.25rem] flex-wrap items-center justify-between gap-3 py-2.5">
+                    <!-- Brand, Workspace & Role Identity -->
+                    <div class="flex items-center gap-3">
+                        <div
+                            id="nav-brand-logo"
+                            class="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-l from-blue-600 to-indigo-600 text-white shadow-sm"
+                        >
+                            <i data-lucide="bar-chart-3" class="h-5 w-5" stroke-width="1.75"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <h1
+                                    id="nav-workspace-name"
+                                    class="truncate text-base font-bold text-slate-900 sm:text-lg"
+                                >
+                                    نموذجي للأعمال
+                                </h1>
+                                <span
+                                    id="nav-role-badge"
+                                    class="inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold"
+                                >
+                                    --
+                                </span>
+                                <span
+                                    id="realtime-status-badge"
+                                    class="hidden items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-medium text-emerald-700 sm:inline-flex"
+                                    title="اتصال التنبيهات المباشرة"
+                                >
+                                    <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                                    <span id="realtime-status-text">مباشر</span>
+                                </span>
+                            </div>
+                            <p
+                                id="nav-user-email"
+                                class="truncate text-xs text-slate-400"
+                                dir="ltr"
+                            ></p>
+                        </div>
+                    </div>
+
+                    <!-- Top Utility Actions -->
+                    <div class="flex items-center gap-2">
+                        <!-- Owner-only controls (e.g. Export CSV) are injected dynamically via JS only when role === 'owner' -->
+                        <div id="owner-actions-slot" class="contents"></div>
+
+                        <button
+                            type="button"
+                            id="sound-toggle-btn"
+                            aria-pressed="true"
+                            title="تفعيل أو كتم صوت التنبيهات"
+                            class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        >
+                            <i
+                                id="sound-toggle-icon"
+                                data-lucide="volume-2"
+                                class="h-4 w-4 text-blue-600"
+                                stroke-width="1.75"
+                            ></i>
+                            <span id="sound-toggle-label" class="hidden sm:inline">الصوت مفعّل</span>
+                        </button>
+
+                        <button
+                            type="button"
+                            id="refresh-btn"
+                            title="تحديث البيانات"
+                            aria-label="تحديث البيانات"
+                            class="inline-flex items-center justify-center rounded-xl border border-slate-200 bg-white p-2 text-slate-600 transition-all hover:border-slate-300 hover:bg-slate-50 hover:text-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        >
+                            <i data-lucide="refresh-cw" class="h-4 w-4" stroke-width="1.75"></i>
+                        </button>
+
+                        <button
+                            type="button"
+                            id="logout-btn"
+                            class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 transition-all hover:border-rose-200 hover:bg-rose-50 hover:text-rose-700 focus:outline-none focus:ring-2 focus:ring-rose-500/20"
+                        >
+                            <i data-lucide="log-out" class="h-4 w-4" stroke-width="1.75"></i>
+                            <span class="hidden sm:inline">خروج</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Workspace Content -->
+        <main class="mx-auto w-full max-w-7xl flex-1 space-y-6 px-4 py-6 sm:px-6 lg:px-8">
+            <!-- Interactive Filters Toolbar -->
+            <section
+                aria-label="أدوات التصفية والبحث"
+                class="no-print rounded-2xl border border-slate-200/80 bg-white p-4 shadow-sm"
+            >
+                <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <!-- Date Range Pills -->
+                    <div
+                        id="date-range-filters"
+                        class="select-none-guard inline-flex flex-wrap items-center gap-1 rounded-xl bg-slate-100/90 p-1"
+                        role="group"
+                        aria-label="النطاق الزمني"
+                    >
+                        <button
+                            type="button"
+                            data-range="today"
+                            class="date-range-pill rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 transition-all hover:text-slate-900"
+                        >
+                            اليوم
+                        </button>
+                        <button
+                            type="button"
+                            data-range="7d"
+                            class="date-range-pill rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-blue-600 shadow-sm transition-all"
+                        >
+                            آخر 7 أيام
+                        </button>
+                        <button
+                            type="button"
+                            data-range="30d"
+                            class="date-range-pill rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 transition-all hover:text-slate-900"
+                        >
+                            آخر 30 يوماً
+                        </button>
+                        <button
+                            type="button"
+                            data-range="all"
+                            class="date-range-pill rounded-lg px-3 py-1.5 text-xs font-medium text-slate-600 transition-all hover:text-slate-900"
+                        >
+                            الكل
+                        </button>
+                    </div>
+
+                    <!-- Page Selector, Status Filter & Live Search -->
+                    <div class="grid grid-cols-1 gap-2.5 sm:grid-cols-3 lg:flex lg:flex-1 lg:items-center lg:justify-end">
+                        <div class="relative min-w-[11rem]">
+                            <label for="page-filter-select" class="sr-only">تصفية حسب الصفحة</label>
+                            <select
+                                id="page-filter-select"
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/15"
+                            >
+                                <option value="all">كل الصفحات</option>
+                            </select>
+                        </div>
+
+                        <div class="relative min-w-[9.5rem]">
+                            <label for="status-filter-select" class="sr-only">تصفية حسب الحالة</label>
+                            <select
+                                id="status-filter-select"
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50/60 px-3 py-2 text-xs font-medium text-slate-700 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/15"
+                            >
+                                <option value="all">كل الحالات</option>
+                                <option value="new">جديد</option>
+                                <option value="contacted">تم التواصل</option>
+                                <option value="interested">مهتم</option>
+                                <option value="won">تم البيع</option>
+                                <option value="no_answer">لم يرد</option>
+                            </select>
+                        </div>
+
+                        <div class="relative min-w-[15rem]">
+                            <label for="search-input" class="sr-only">بحث بالاسم أو الهاتف</label>
+                            <i
+                                data-lucide="search"
+                                class="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400"
+                                stroke-width="1.75"
+                            ></i>
+                            <input
+                                type="search"
+                                id="search-input"
+                                enterkeyhint="search"
+                                placeholder="ابحث بالاسم أو رقم الهاتف..."
+                                class="w-full rounded-xl border border-slate-200 bg-slate-50/60 py-2 pl-3 pr-9 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/15"
+                            />
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4 KPI Metric Cards -->
+            <section
+                aria-label="مؤشرات الأداء الرئيسية"
+                class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4"
+            >
+                <!-- KPI 1: Total Page Views -->
+                <article
+                    class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md"
+                >
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-medium text-slate-500">إجمالي الزيارات</p>
+                            <div class="mt-2.5 flex items-baseline gap-2">
+                                <div
+                                    id="kpi-views-skeleton"
+                                    class="skeleton-shimmer hidden h-8 w-20 rounded-lg"
+                                ></div>
+                                <p
+                                    id="kpi-total-views"
+                                    class="tabular-nums text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
+                                >
+                                    0
+                                </p>
+                            </div>
+                        </div>
+                        <div
+                            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-600"
+                        >
+                            <i data-lucide="eye" class="h-5 w-5" stroke-width="1.75"></i>
+                        </div>
+                    </div>
+                    <p class="mt-3 text-xs text-slate-400">زيارات صفحات الهبوط المسجلة</p>
+                </article>
+
+                <!-- KPI 2: Total Leads -->
+                <article
+                    class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md"
+                >
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-medium text-slate-500">إجمالي الطلبات</p>
+                            <div class="mt-2.5 flex items-baseline gap-2">
+                                <div
+                                    id="kpi-leads-skeleton"
+                                    class="skeleton-shimmer hidden h-8 w-20 rounded-lg"
+                                ></div>
+                                <p
+                                    id="kpi-total-leads"
+                                    class="tabular-nums text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
+                                >
+                                    0
+                                </p>
+                            </div>
+                        </div>
+                        <div
+                            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sky-50 text-sky-600"
+                        >
+                            <i data-lucide="users" class="h-5 w-5" stroke-width="1.75"></i>
+                        </div>
+                    </div>
+                    <p class="mt-3 text-xs text-slate-400">العملاء المهتمون ضمن النطاق</p>
+                </article>
+
+                <!-- KPI 3: Conversion Rate -->
+                <article
+                    class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md"
+                >
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-medium text-slate-500">نسبة التحويل</p>
+                            <div class="mt-2.5 flex items-baseline gap-2">
+                                <div
+                                    id="kpi-conversion-skeleton"
+                                    class="skeleton-shimmer hidden h-8 w-20 rounded-lg"
+                                ></div>
+                                <p
+                                    id="kpi-conversion-rate"
+                                    class="tabular-nums text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
+                                    dir="ltr"
+                                >
+                                    0%
+                                </p>
+                            </div>
+                        </div>
+                        <div
+                            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600"
+                        >
+                            <i data-lucide="trending-up" class="h-5 w-5" stroke-width="1.75"></i>
+                        </div>
+                    </div>
+                    <p class="mt-3 text-xs text-slate-400">معدل تحويل الزيارات إلى طلبات</p>
+                </article>
+
+                <!-- KPI 4: New Leads Awaiting Response -->
+                <article
+                    id="kpi-new-card"
+                    class="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md"
+                >
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <p class="text-xs font-medium text-slate-500">طلبات جديدة تنتظر الرد</p>
+                            <div class="mt-2.5 flex items-baseline gap-2">
+                                <div
+                                    id="kpi-new-skeleton"
+                                    class="skeleton-shimmer hidden h-8 w-16 rounded-lg"
+                                ></div>
+                                <p
+                                    id="kpi-new-leads"
+                                    class="tabular-nums text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl"
+                                >
+                                    0
+                                </p>
+                            </div>
+                        </div>
+                        <div
+                            id="kpi-new-icon-wrap"
+                            class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition-colors"
+                        >
+                            <i data-lucide="bell-ring" class="h-5 w-5" stroke-width="1.75"></i>
+                        </div>
+                    </div>
+                    <p id="kpi-new-caption" class="mt-3 text-xs text-slate-400">
+                        تتطلب متابعة فريق المبيعات
+                    </p>
+                </article>
+            </section>
+
+            <!-- Analytics Visualizations (2 Chart.js Cards) -->
+            <section
+                aria-label="الرسوم البيانية التحليلية"
+                class="grid grid-cols-1 gap-6 lg:grid-cols-12"
+            >
+                <!-- Peak Activity Hours Bar Chart -->
+                <article
+                    class="flex flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md lg:col-span-7"
+                >
+                    <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">ساعات الذروة للطلبات</h2>
+                            <p class="mt-0.5 text-xs text-slate-400">
+                                توزيع الطلبات على مدار 24 ساعة بالتوقيت المحلي
+                            </p>
+                        </div>
+                        <span
+                            id="peak-hour-summary"
+                            class="tabular-nums rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700"
+                        >
+                            --
+                        </span>
+                    </div>
+
+                    <div class="relative h-64 w-full flex-1">
+                        <div
+                            id="peak-hours-skeleton"
+                            class="skeleton-shimmer hidden h-full w-full rounded-xl"
+                        ></div>
+                        <div
+                            id="peak-hours-empty"
+                            class="hidden h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 text-center"
+                        >
+                            <i
+                                data-lucide="clock"
+                                class="h-7 w-7 text-slate-300"
+                                stroke-width="1.75"
+                            ></i>
+                            <p class="text-xs font-medium text-slate-400">
+                                لا توجد بيانات كافية لعرض ساعات الذروة
+                            </p>
+                        </div>
+                        <canvas id="peak-hours-chart" aria-label="رسم بياني لساعات الذروة"></canvas>
+                    </div>
+                </article>
+
+                <!-- Geo & Traffic Distribution Doughnut Chart -->
+                <article
+                    class="flex flex-col rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm transition-all duration-200 hover:shadow-md lg:col-span-5"
+                >
+                    <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">توزيع الطلبات</h2>
+                            <p class="mt-0.5 text-xs text-slate-400">
+                                تحليل التوزيع الجغرافي ومصادر الزيارات
+                            </p>
+                        </div>
+
+                        <div
+                            class="select-none-guard inline-flex rounded-xl bg-slate-100 p-1"
+                            role="group"
+                            aria-label="تبديل عرض التوزيع"
+                        >
+                            <button
+                                type="button"
+                                id="dist-toggle-cities"
+                                class="rounded-lg bg-white px-2.5 py-1 text-xs font-semibold text-blue-600 shadow-sm transition-all"
+                            >
+                                المحافظات
+                            </button>
+                            <button
+                                type="button"
+                                id="dist-toggle-sources"
+                                class="rounded-lg px-2.5 py-1 text-xs font-medium text-slate-600 transition-all hover:text-slate-900"
+                            >
+                                مصادر الزيارات
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="grid flex-1 grid-cols-1 items-center gap-4 sm:grid-cols-12">
+                        <div class="relative h-52 sm:col-span-6">
+                            <div
+                                id="distribution-skeleton"
+                                class="skeleton-shimmer hidden h-full w-full rounded-xl"
+                            ></div>
+                            <div
+                                id="distribution-empty"
+                                class="hidden h-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-slate-200 bg-slate-50/50 text-center"
+                            >
+                                <i
+                                    data-lucide="pie-chart"
+                                    class="h-7 w-7 text-slate-300"
+                                    stroke-width="1.75"
+                                ></i>
+                                <p class="text-xs font-medium text-slate-400">لا توجد بيانات</p>
+                            </div>
+                            <canvas
+                                id="distribution-chart"
+                                aria-label="رسم دائري لتوزيع الطلبات"
+                            ></canvas>
+                        </div>
+
+                        <ul
+                            id="distribution-legend"
+                            class="custom-scrollbar max-h-52 space-y-2 overflow-y-auto pr-1 sm:col-span-6"
+                        ></ul>
+                    </div>
+                </article>
+            </section>
+
+            <!-- Actionable Mini-CRM Table -->
+            <section
+                aria-label="جدول إدارة العملاء والطلبات"
+                class="crm-print-protected overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm"
+            >
+                <!-- Table Section Header -->
+                <div
+                    class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4"
+                >
+                    <div class="flex items-center gap-2.5">
+                        <h2 class="text-base font-bold text-slate-900">سجل الطلبات والعملاء</h2>
+                        <span
+                            id="leads-count-badge"
+                            class="tabular-nums rounded-full border border-slate-200 bg-slate-100 px-2.5 py-0.5 text-xs font-semibold text-slate-700"
+                        >
+                            0
+                        </span>
+                    </div>
+
+                    <button
+                        type="button"
+                        id="clear-filters-btn"
+                        class="hidden inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-100 hover:text-slate-900"
+                    >
+                        <i data-lucide="filter-x" class="h-3.5 w-3.5" stroke-width="1.75"></i>
+                        <span>إعادة ضبط الفلاتر</span>
+                    </button>
+                </div>
+
+                <!-- Responsive Table Wrapper -->
+                <div class="table-wrapper custom-scrollbar">
+                    <table id="leads-table" class="crm-responsive-table text-right">
+                        <thead class="bg-slate-50/95 backdrop-blur-sm">
+                            <tr class="border-b border-slate-200/80 text-xs font-semibold text-slate-500">
+                                <th scope="col" class="px-4 py-3.5 text-right">العميل</th>
+                                <th scope="col" class="px-4 py-3.5 text-right">رقم الهاتف</th>
+                                <th scope="col" class="px-4 py-3.5 text-right">المحافظة والمصدر</th>
+                                <th scope="col" class="px-4 py-3.5 text-right">توقيت الطلب</th>
+                                <th scope="col" class="px-4 py-3.5 text-right">الحالة</th>
+                                <th scope="col" class="px-4 py-3.5 text-right">الملاحظات</th>
+                                <th scope="col" class="px-4 py-3.5 text-left">الإجراءات السريعة</th>
+                            </tr>
+                        </thead>
+                        <tbody id="leads-table-body" class="divide-y divide-slate-100 bg-white text-sm"></tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State -->
+                <div
+                    id="leads-empty-state"
+                    class="hidden flex-col items-center justify-center px-6 py-14 text-center"
+                >
+                    <div
+                        class="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100 text-slate-400"
+                    >
+                        <i data-lucide="inbox" class="h-6 w-6" stroke-width="1.75"></i>
+                    </div>
+                    <h3 class="text-sm font-semibold text-slate-900">لا توجد طلبات مطابقة</h3>
+                    <p class="mt-1 max-w-sm text-xs text-slate-500">
+                        لم يتم العثور على طلبات ضمن الفلاتر الحالية. جرّب تغيير النطاق الزمني أو مسح
+                        نص البحث.
+                    </p>
+                </div>
+
+                <!-- Pagination Footer -->
+                <div
+                    id="pagination-bar"
+                    class="no-print flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/50 px-5 py-3.5"
+                >
+                    <p id="pagination-summary" class="tabular-nums text-xs text-slate-500">
+                        عرض 0 من أصل 0
+                    </p>
+
+                    <div class="flex items-center gap-2">
+                        <button
+                            type="button"
+                            id="pagination-prev-btn"
+                            disabled
+                            class="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
+                        >
+                            <i data-lucide="chevron-right" class="h-4 w-4" stroke-width="1.75"></i>
+                            <span>السابق</span>
+                        </button>
+
+                        <span
+                            id="pagination-indicator"
+                            class="tabular-nums px-2 text-xs font-semibold text-slate-700"
+                        >
+                            1 / 1
+                        </span>
+
+                        <button
+                            type="button"
+                            id="pagination-next-btn"
+                            disabled
+                            class="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-45"
+                        >
+                            <span>التالي</span>
+                            <i data-lucide="chevron-left" class="h-4 w-4" stroke-width="1.75"></i>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- ===================================================================== -->
+    <!-- Native Light-Dismiss Modals (<dialog closedby="any">)                 -->
+    <!-- ===================================================================== -->
+    <dialog
+        id="notes-modal"
+        class="crm-dialog no-print"
+        closedby="any"
+        aria-labelledby="notes-modal-title"
+    >
+        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+            <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                <div>
+                    <h2 id="notes-modal-title" class="text-base font-bold text-slate-900">
+                        ملاحظات العميل
+                    </h2>
+                    <p id="notes-modal-lead-info" class="mt-0.5 text-xs text-slate-500"></p>
+                </div>
+                <button
+                    type="button"
+                    id="notes-close-x"
+                    aria-label="إغلاق نافذة الملاحظات"
+                    class="rounded-xl p-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
+                >
+                    <i data-lucide="x" class="h-4 w-4" stroke-width="1.75"></i>
+                </button>
+            </div>
+
+            <form id="notes-modal-form" class="p-5">
+                <label for="notes-textarea" class="mb-2 block text-xs font-semibold text-slate-700">
+                    سجل المتابعة والتفاصيل
+                </label>
+                <textarea
+                    id="notes-textarea"
+                    rows="5"
+                    maxlength="2000"
+                    placeholder="اكتب ملاحظات المكالمة، العرض المطلوب، أو موعد المتابعة القادم..."
+                    class="custom-scrollbar w-full rounded-xl border border-slate-200 bg-slate-50/70 p-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-500/10"
+                ></textarea>
+
+                <div class="mt-2 flex items-center justify-between text-xs text-slate-400">
+                    <span>الحد الأقصى 2000 حرف</span>
+                    <span id="notes-char-count" class="tabular-nums">0 / 2000</span>
+                </div>
+
+                <div class="mt-5 flex items-center justify-end gap-2.5">
+                    <button
+                        type="button"
+                        id="notes-cancel-btn"
+                        class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                    >
+                        إلغاء
+                    </button>
+                    <button
+                        type="submit"
+                        id="notes-save-btn"
+                        class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-l from-blue-600 to-indigo-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-all hover:from-blue-700 hover:to-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        <span>حفظ الملاحظات</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </dialog>
+
+    <dialog
+        id="delete-modal"
+        class="crm-dialog no-print"
+        closedby="any"
+        aria-labelledby="delete-modal-title"
+    >
+        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl">
+            <div class="p-6">
+                <div class="flex items-start gap-3.5">
+                    <div
+                        class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-rose-50 text-rose-600"
+                    >
+                        <i data-lucide="trash-2" class="h-5 w-5" stroke-width="1.75"></i>
+                    </div>
+                    <div>
+                        <h2 id="delete-modal-title" class="text-base font-bold text-slate-900">
+                            تأكيد حذف الطلب
+                        </h2>
+                        <p class="mt-1 text-xs leading-relaxed text-slate-500">
+                            سيتم حذف هذا الطلب نهائياً من قاعدة البيانات ولا يمكن التراجع عن هذا
+                            الإجراء.
+                        </p>
+                        <p
+                            id="delete-modal-lead-info"
+                            class="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-800"
+                        ></p>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex items-center justify-end gap-2.5">
+                    <button
+                        type="button"
+                        id="delete-cancel-btn"
+                        class="rounded-xl border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+                    >
+                        إلغاء
+                    </button>
+                    <button
+                        type="button"
+                        id="delete-confirm-btn"
+                        class="inline-flex items-center gap-1.5 rounded-xl bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        <span>حذف نهائياً</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </dialog>
+
+    <!-- ===================================================================== -->
+    <!-- Top-Layer Floating Toast Container (popover="manual")                 -->
+    <!-- ===================================================================== -->
+    <div
+        id="toast-container"
+        popover="manual"
+        role="region"
+        aria-label="الإشعارات"
+        aria-live="polite"
+        class="no-print"
+    ></div>
+
+    <!-- Main Modular Application Controller -->
+    <script type="module" src="./js/app.js"></script>
+</body>
+</html>

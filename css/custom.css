@@ -1,0 +1,366 @@
+/* ============================================================================
+ * White-Label B2B Mini-CRM Dashboard — Custom Stylesheet (Arabic RTL)
+ * ============================================================================ */
+
+:root {
+    --scrollbar-thumb: #cbd5e1;
+    --scrollbar-thumb-hover: #94a3b8;
+    --scrollbar-track: #f1f5f9;
+    --brand-primary: #2563eb;
+}
+
+html,
+body {
+    font-family: 'IBM Plex Sans Arabic', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+        sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* Align digits cleanly across KPIs, timestamps, and phone numbers */
+.tabular-nums {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+}
+
+/* ============================================================================
+ * Modern Custom Scrollbars (Standard CSS + @supports Fallback)
+ * ============================================================================ */
+
+html,
+.custom-scrollbar {
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+    scrollbar-width: thin;
+}
+
+@supports not (scrollbar-color: auto) {
+    html::-webkit-scrollbar,
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+    }
+
+    html::-webkit-scrollbar-track,
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: var(--scrollbar-track);
+        border-radius: 9999px;
+    }
+
+    html::-webkit-scrollbar-thumb,
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: var(--scrollbar-thumb);
+        border-radius: 9999px;
+    }
+
+    html::-webkit-scrollbar-thumb:hover,
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: var(--scrollbar-thumb-hover);
+    }
+}
+
+/* ============================================================================
+ * Responsive CRM Table -> Mobile Action Cards (@container)
+ * ============================================================================ */
+
+.table-wrapper {
+    overflow-x: auto;
+    max-inline-size: 100%;
+    container-type: inline-size;
+}
+
+.crm-responsive-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    inline-size: 100%;
+    --label-2: 'رقم الهاتف';
+    --label-3: 'المحافظة والمصدر';
+    --label-4: 'توقيت الطلب';
+    --label-5: 'الحالة';
+    --label-6: 'الملاحظات';
+    --label-7: 'الإجراءات السريعة';
+}
+
+.crm-responsive-table thead {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 10;
+}
+
+@container (width < 768px) {
+    .crm-responsive-table,
+    .crm-responsive-table thead,
+    .crm-responsive-table tbody,
+    .crm-responsive-table tr,
+    .crm-responsive-table th,
+    .crm-responsive-table td {
+        display: block;
+    }
+
+    .crm-responsive-table thead {
+        display: none;
+    }
+
+    .crm-responsive-table tbody {
+        padding: 0.75rem;
+    }
+
+    .crm-responsive-table tbody tr {
+        background-color: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 1rem;
+        margin-block-end: 0.875rem;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+        padding: 0.25rem 0;
+        overflow: hidden;
+    }
+
+    .crm-responsive-table tbody tr:last-child {
+        margin-block-end: 0;
+    }
+
+    .crm-responsive-table tbody th[scope='row'] {
+        border-bottom: 1px solid #f1f5f9;
+        padding: 0.875rem 1rem;
+        background-color: #f8fafc;
+        text-align: start;
+    }
+
+    .crm-responsive-table tbody td {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.75rem;
+        padding: 0.625rem 1rem;
+        border-bottom: 1px solid #f8fafc;
+        text-align: end;
+    }
+
+    .crm-responsive-table tbody td::before {
+        color: #64748b;
+        font-size: 0.75rem;
+        font-weight: 600;
+        flex-shrink: 0;
+        text-align: start;
+    }
+
+    .crm-responsive-table tbody td:nth-child(2)::before {
+        content: var(--label-2) ': ' / var(--label-2);
+    }
+
+    .crm-responsive-table tbody td:nth-child(3)::before {
+        content: var(--label-3) ': ' / var(--label-3);
+    }
+
+    .crm-responsive-table tbody td:nth-child(4)::before {
+        content: var(--label-4) ': ' / var(--label-4);
+    }
+
+    .crm-responsive-table tbody td:nth-child(5)::before {
+        content: var(--label-5) ': ' / var(--label-5);
+    }
+
+    .crm-responsive-table tbody td:nth-child(6)::before {
+        content: var(--label-6) ': ' / var(--label-6);
+    }
+
+    .crm-responsive-table tbody td:nth-child(7) {
+        flex-direction: column;
+        align-items: stretch;
+        border-bottom: 0;
+        padding-top: 0.75rem;
+        padding-bottom: 0.875rem;
+        background-color: #f8fafc;
+    }
+
+    .crm-responsive-table tbody td:nth-child(7)::before {
+        content: var(--label-7) ': ' / var(--label-7);
+        margin-bottom: 0.25rem;
+    }
+
+    .crm-responsive-table tbody td:nth-child(7) .crm-actions-group {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        width: 100%;
+    }
+
+    .crm-responsive-table tbody td:nth-child(7) .crm-actions-group.has-delete {
+        grid-template-columns: 1fr 1fr auto;
+    }
+}
+
+/* ============================================================================
+ * Native <dialog> Modals & Backdrop
+ * ============================================================================ */
+
+dialog.crm-dialog {
+    padding: 0;
+    border: 0;
+    margin: auto;
+    max-inline-size: min(92vw, 32rem);
+    inline-size: 100%;
+    background: transparent;
+    overflow: visible;
+    color: inherit;
+}
+
+dialog.crm-dialog[open] {
+    animation: dialogPopIn 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+dialog.crm-dialog::backdrop {
+    background-color: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+}
+
+@keyframes dialogPopIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* ============================================================================
+ * Top-Layer Popover Toast Container
+ * ============================================================================ */
+
+#toast-container[popover] {
+    inset: auto;
+    inset-block-start: 1.25rem;
+    inset-inline-end: 1.25rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    overflow: visible;
+    pointer-events: none;
+    max-inline-size: min(24rem, calc(100vw - 2rem));
+    inline-size: 100%;
+}
+
+#toast-container[popover]:is(:popover-open, .\:popover-open),
+#toast-container.toast-fallback-open {
+    position: fixed;
+    inset-block-start: 1.25rem;
+    inset-inline-end: 1.25rem;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.crm-toast-item {
+    pointer-events: auto;
+    transition:
+        opacity 220ms ease,
+        transform 220ms ease,
+        overlay 220ms allow-discrete,
+        display 220ms allow-discrete;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+
+@starting-style {
+    .crm-toast-item {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.97);
+    }
+}
+
+.crm-toast-item.toast-exit {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+}
+
+/* ============================================================================
+ * Skeleton Loaders, Realtime Flash & Status Pulse Animations
+ * ============================================================================ */
+
+.skeleton-shimmer {
+    background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 37%, #f1f5f9 63%);
+    background-size: 400% 100%;
+    animation: skeletonShimmer 1.35s ease infinite;
+}
+
+@keyframes skeletonShimmer {
+    0% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
+}
+
+.lead-row-flash {
+    animation: leadRowFlash 2.4s ease-out forwards;
+}
+
+@keyframes leadRowFlash {
+    0% {
+        background-color: #dbeafe;
+        box-shadow: inset 0 0 0 2px rgba(37, 99, 235, 0.35);
+    }
+    40% {
+        background-color: #eff6ff;
+        box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.2);
+    }
+    100% {
+        background-color: transparent;
+        box-shadow: none;
+    }
+}
+
+.status-dot-pulse {
+    animation: statusPulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes statusPulse {
+    0%,
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.45;
+        transform: scale(1.35);
+    }
+}
+
+/* UI Chrome Selection Guard (never applied to editable inputs/textareas) */
+.select-none-guard {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* ============================================================================
+ * Accessibility & Anti-Data-Theft Print Guards
+ * ============================================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    .skeleton-shimmer,
+    .lead-row-flash,
+    .status-dot-pulse,
+    dialog.crm-dialog[open],
+    .crm-toast-item {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+@media print {
+    .no-print,
+    dialog,
+    [popover] {
+        display: none !important;
+    }
+
+    body[data-role='sales'] .crm-print-protected {
+        display: none !important;
+    }
+}
