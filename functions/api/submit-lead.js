@@ -778,10 +778,18 @@ export async function onRequestPost(context) {
 }
 
 /**
- * Fallback handler rejecting all non-POST/OPTIONS HTTP verbs.
+ * Universal dispatcher ensuring proper routing under all Cloudflare runtimes.
  * @param {{ request: Request, env: Record<string, string | undefined> }} context
- * @returns {Response}
+ * @returns {Promise<Response>}
  */
 export async function onRequest(context) {
-    return new LeadSubmissionHandler(context).handleMethodNotAllowed();
+    const method = (context.request.method || '').toUpperCase();
+    const handler = new LeadSubmissionHandler(context);
+    if (method === 'POST') {
+        return handler.handlePost();
+    }
+    if (method === 'OPTIONS') {
+        return handler.handleOptions();
+    }
+    return handler.handleMethodNotAllowed();
 }

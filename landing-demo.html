@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>استشارة نمو الأعمال الرقمية | العرض الخاص</title>
   
+  <!-- Favicon to eliminate 404 -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
+
   <!-- خط IBM Plex Sans Arabic -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -275,16 +278,16 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
-          const data = await res.json();
-          if (res.ok && data.success) {
-            submittedSuccessfully = true;
-          } else if (res.status !== 404) {
-            errorMessage = data.error;
+          if (res.ok) {
+            const data = await res.json();
+            if (data.success) {
+              submittedSuccessfully = true;
+            }
           }
         } catch (_) {}
 
-        // المحاولة الثانية (البديل الفوري للمنصات الثابتة مثل GitHub Pages / Netlify / Vercel):
-        if (!submittedSuccessfully && !errorMessage) {
+        // المحاولة الثانية (البديل المباشر الذكي في حال التشغيل الثابت أو رفض POST بـ 405 أو 404):
+        if (!submittedSuccessfully) {
           try {
             // جلب معرف الصفحة ومعرف مساحة العمل
             const pageRes = await fetch(`${SUPABASE_URL}/rest/v1/pages?slug=eq.${encodeURIComponent(PAGE_SLUG)}&select=id,workspace_id`, {
