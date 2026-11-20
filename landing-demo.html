@@ -164,27 +164,59 @@
     <p>© 2026 جميع الحقوق محفوظة — مدعوم بنظام B2B Lead Engine</p>
   </footer>
 
-  <!-- Telemetry & Form Capture Script -->
+  <!-- Telemetry & Form Capture Script with Universal Fallback -->
   <script>
     (function initLandingIntegration() {
-      // اسم الصفحة المسجل في جدول pages
+      // إعدادات الربط المباشر مع Supabase في حال التشغيل على منصة تجريبية (GitHub Pages / Netlify / Local)
+      const SUPABASE_URL = 'https://gdxphhshwicsfuuhqruz.supabase.co';
+      const SUPABASE_ANON = 'sb_publishable_Ek4c65n5bgSMLhjFa36x7w_71HRp_df';
       const PAGE_SLUG = 'main-offer';
 
       // 1. تسجيل الزيارة فور تحميل الصفحة (Page View Telemetry)
       const urlParams = new URLSearchParams(window.location.search);
       const utmSource = urlParams.get('utm_source') || (document.referrer ? new URL(document.referrer).hostname : 'direct');
 
-      fetch('/api/track-view', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slug: PAGE_SLUG,
-          utm_source: utmSource
-        })
-      }).catch(err => {
-        // تسجيل صامت لا يعطل تصفح المستخدم
-        console.debug('Telemetry ping failed:', err);
-      });
+      async function recordPageView() {
+        try {
+          // محاولة الإرسال لسيرفر Cloudflare أولاً
+          const cfRes = await fetch('/api/track-view', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ slug: PAGE_SLUG, utm_source: utmSource })
+          });
+          if (cfRes.ok) return;
+        } catch (_) {}
+
+        // بديل تلقائي للمنصات التجريبية (GitHub Pages / Local Preview)
+        try {
+          const pageRes = await fetch(`${SUPABASE_URL}/rest/v1/pages?slug=eq.${encodeURIComponent(PAGE_SLUG)}&select=id,workspace_id`, {
+            headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` }
+          });
+          const pages = await pageRes.json();
+          if (pages && pages[0]) {
+            await fetch(`${SUPABASE_URL}/rest/v1/page_views`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': SUPABASE_ANON,
+                'Authorization': `Bearer ${SUPABASE_ANON}`
+              },
+              body: JSON.stringify({
+                workspace_id: pages[0].workspace_id,
+                page_id: pages[0].id,
+                utm_source: utmSource,
+                city: 'منصة تجريبية (Preview)',
+                country: 'Local/Web',
+                device: /mobile/i.test(navigator.userAgent) ? 'mobile' : 'desktop'
+              })
+            });
+          }
+        } catch (e) {
+          console.debug('Telemetry fallback silently bypassed:', e);
+        }
+      }
+
+      recordPageView();
 
       // 2. معالجة إرسال الفورم (Lead Submission)
       const form = document.getElementById('leadCaptureForm');
@@ -211,36 +243,110 @@
         btnSpinner.classList.remove('hidden');
 
         const formData = new FormData(form);
+        const nameVal = (formData.get('name') || '').trim();
+        const phoneVal = (formData.get('phone') || '').trim();
+        const honeypot = formData.get('website_url');
+
+        // فحص فخ البوت
+        if (honeypot) {
+          showAlert('🎉 تم تسجيل طلبك بنجاح!', true);
+          form.reset();
+          submitBtn.disabled = false;
+          btnText.textContent = 'تأكيد طلب الاستشارة المجانية';
+          btnSpinner.classList.add('hidden');
+          return;
+        }
+
         const payload = {
           slug: PAGE_SLUG,
-          name: formData.get('name'),
-          phone: formData.get('phone'),
-          website_url: formData.get('website_url') || '', // Honeypot
+          name: nameVal,
+          phone: phoneVal,
+          website_url: '',
           utm_source: utmSource
         };
 
+        let submittedSuccessfully = false;
+        let errorMessage = '';
+
+        // المحاولة الأولى: عبر نقطة نهاية Cloudflare Edge API
         try {
           const res = await fetch('/api/submit-lead', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
           });
-
           const data = await res.json();
-
           if (res.ok && data.success) {
-            showAlert('🎉 تم تسجيل طلبك بنجاح! سيتواصل معك فريقنا في أقرب وقت.', true);
-            form.reset();
-          } else {
-            showAlert(data.error || 'حدث خطأ غير متوقع، يرجى التحقق من صحة الرقم والمحاولة مرة أخرى.', false);
+            submittedSuccessfully = true;
+          } else if (res.status !== 404) {
+            errorMessage = data.error;
           }
-        } catch (error) {
-          showAlert('تعذر الاتصال بالخادم حالياً. يرجى مراجعة اتصال الإنترنت.', false);
-        } finally {
-          submitBtn.disabled = false;
-          btnText.textContent = 'تأكيد طلب الاستشارة المجانية';
-          btnSpinner.classList.add('hidden');
+        } catch (_) {}
+
+        // المحاولة الثانية (البديل الفوري للمنصات الثابتة مثل GitHub Pages / Netlify / Vercel):
+        if (!submittedSuccessfully && !errorMessage) {
+          try {
+            // جلب معرف الصفحة ومعرف مساحة العمل
+            const pageRes = await fetch(`${SUPABASE_URL}/rest/v1/pages?slug=eq.${encodeURIComponent(PAGE_SLUG)}&select=id,workspace_id`, {
+              headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` }
+            });
+            const pages = await pageRes.json();
+            let wsId = pages && pages[0] ? pages[0].workspace_id : null;
+            let pageId = pages && pages[0] ? pages[0].id : null;
+
+            // إذا لم توجد الصفحة، نجلب مساحة العمل مباشرة
+            if (!wsId) {
+              const wsRes = await fetch(`${SUPABASE_URL}/rest/v1/workspaces?select=id&limit=1`, {
+                headers: { 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` }
+              });
+              const workspaces = await wsRes.json();
+              if (workspaces && workspaces[0]) wsId = workspaces[0].id;
+            }
+
+            if (wsId) {
+              const insertRes = await fetch(`${SUPABASE_URL}/rest/v1/leads`, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'apikey': SUPABASE_ANON,
+                  'Authorization': `Bearer ${SUPABASE_ANON}`,
+                  'Prefer': 'return=representation'
+                },
+                body: JSON.stringify({
+                  workspace_id: wsId,
+                  page_id: pageId,
+                  name: nameVal,
+                  phone: phoneVal,
+                  status: 'new',
+                  utm_source: utmSource,
+                  city: 'منصة تجريبية (Preview)'
+                })
+              });
+
+              if (insertRes.ok) {
+                submittedSuccessfully = true;
+              } else {
+                const errData = await insertRes.json();
+                errorMessage = errData.message || 'تعذر حفظ البيانات في الخادم';
+              }
+            } else {
+              errorMessage = 'تعذر العثور على مساحة العمل في النظام';
+            }
+          } catch (netErr) {
+            errorMessage = 'حدث خطأ في الاتصال بقاعدة البيانات';
+          }
         }
+
+        if (submittedSuccessfully) {
+          showAlert('🎉 تم تسجيل طلبك بنجاح! سيتواصل معك فريقنا في أقرب وقت.', true);
+          form.reset();
+        } else {
+          showAlert(errorMessage || 'حدث خطأ غير متوقع، يرجى المحاولة مرة أخرى.', false);
+        }
+
+        submitBtn.disabled = false;
+        btnText.textContent = 'تأكيد طلب الاستشارة المجانية';
+        btnSpinner.classList.add('hidden');
       });
     })();
   </script>
